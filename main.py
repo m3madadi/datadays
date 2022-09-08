@@ -3,7 +3,10 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
+from sklearn.cluster import DBSCAN
 from sklearn.metrics import f1_score
+from pyod.models.auto_encoder import AutoEncoder
+
 
 # input_path = os.environ.get('DATA_104_PATH') + '/test_data'
 output_path = 'output'
@@ -11,31 +14,61 @@ output_path = 'output'
 input_path = '/home/madadi/Project/datadays/data/'
 
 
+# PrerProcess Data
+def preprocess(df, drop_label):
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+    df = df.set_index('timestamp')
+    # df = df.asfreq(freq='T')
+    # df = df.interpolate()
+    if drop_label:
+        df = df.drop(['label'], axis=1)
+    else:
+        df['label'] = df.label.astype(int)
+
+    scaler = StandardScaler()
+    np_scaled = scaler.fit_transform(df['value'].values.reshape(-1, 1))
+    scaler = StandardScaler()
+    np_scaled = scaler.fit_transform(df['value'].values.reshape(-1, 1))
+    df['scaled'] = np_scaled
+    return df
+
 # Each method should apply in a function
+
 # Isolation Forest Method
 def isolation_forest(df):
-    scaler = StandardScaler()
     outliers_fraction = float(.01)
-    np_scaled = scaler.fit_transform(df['value'].values.reshape(-1, 1))
-    data = pd.DataFrame(np_scaled)
+    data = df['scaled'].to_frame()
+
     model =  IsolationForest(contamination=outliers_fraction)
-    df['label'] = model.fit_predict(data)
-    df['label'].mask(df['label'] == 1, 0, inplace=True)
-    df['label'].mask(df['label'] == -1, 1, inplace=True)
+    df['anomaly'] = model.fit_predict(data)
+    df['label'] = np.where(df['anomaly']==-1, 1, 0)
+
+    return df
+
+# DBSCAN Method
+def auto_encoder(df):
+    data = df['scaled'].to_frame()
+
+    # Load Trained AutoEncoder Model
+
+
+    # ae_clf = AutoEncoder(hidden_neurons =[1, 10, 10, 1], epochs=2)
+    # ae_clf.fit(data)
+    # data['score'] = ae_clf.decision_scores_ # outlier score
+    # df['label'] = np.where(data['score'] < 1.54, 0, 1)
+
+    # df['label'] = np.where(df['anomaly']==-1, 1, 0)
+
     return df
 
 
 
 class TimeSeriesAnomalyDetector:
     def __call__(self, df):
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-        # df = df.set_index('timestamp')
-        # df = df.asfreq(freq='T')
-        df = df.drop(['label'], axis=1)
-        # df = df.resample('H').mean().interpolate()
-        # df = df.interpolate()
+        processed_df = preprocess(df, True)
 
-        final_df = isolation_forest(df)
+        final_df = isolation_forest(processed_df)
+        # final_df = auto_encoder(processed_df)
 
         return final_df
     
