@@ -10,9 +10,8 @@ output_path = 'output'
 
 input_path = '/home/madadi/Project/datadays/data/'
 
+
 # Each method should apply in a function
-
-
 # Isolation Forest Method
 def isolation_forest(df):
     scaler = StandardScaler()
