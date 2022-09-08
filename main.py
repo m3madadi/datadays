@@ -25,11 +25,13 @@ def preprocess(df, drop_label):
     else:
         df['label'] = df.label.astype(int)
 
-    scaler = StandardScaler()
-    np_scaled = scaler.fit_transform(df['value'].values.reshape(-1, 1))
+
     scaler = StandardScaler()
     np_scaled = scaler.fit_transform(df['value'].values.reshape(-1, 1))
     df['scaled'] = np_scaled
+    df['lag_1'] = df['value'].shift(1)
+    df['lag_2'] = df['value'].shift(2)
+    df.fillna(0, inplace=True)
     return df
 
 # Each method should apply in a function
@@ -37,7 +39,7 @@ def preprocess(df, drop_label):
 # Isolation Forest Method
 def isolation_forest(df):
     outliers_fraction = float(.01)
-    data = df['scaled'].to_frame()
+    data = df[['value']]
 
     model =  IsolationForest(contamination=outliers_fraction)
     df['anomaly'] = model.fit_predict(data)
