@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import f1_score
-from pyod.models.auto_encoder import AutoEncoder
+# from pyod.models.auto_encoder import AutoEncoder
 
 
 # input_path = os.environ.get('DATA_104_PATH') + '/test_data'
@@ -49,7 +49,7 @@ def isolation_forest(df):
 
 # DBSCAN Method
 def auto_encoder(df):
-    data = df['scaled'].to_frame()
+    # data = df['scaled'].to_frame()
 
     # Load Trained AutoEncoder Model
 
