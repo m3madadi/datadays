@@ -5,6 +5,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import f1_score
+from adtk.detector import PcaAD
+from adtk.visualization import plot
 # from pyod.models.auto_encoder import AutoEncoder
 
 
@@ -31,6 +33,8 @@ def preprocess(df, drop_label):
     df['scaled'] = np_scaled
     df['lag_1'] = df['value'].shift(1)
     df['lag_2'] = df['value'].shift(2)
+    df['lag_3'] = df['value'].shift(3)
+    df['lag_4'] = df['value'].shift(4)
     df.fillna(0, inplace=True)
     return df
 
@@ -63,14 +67,24 @@ def auto_encoder(df):
 
     return df
 
+def pca(df):
+    data = df[['value', 'lag_1', 'lag_2', 'lag_3', 'lag_4']]
+
+    pca_ad = PcaAD(k=1)
+    anomalies = pca_ad.fit_detect(data)
+    df['label'] = np.where(anomalies==True, 1, 0)
+
+    return df
+
 
 
 class TimeSeriesAnomalyDetector:
     def __call__(self, df):
         processed_df = preprocess(df, True)
 
-        final_df = isolation_forest(processed_df)
+        # final_df = isolation_forest(processed_df)
         # final_df = auto_encoder(processed_df)
+        final_df = pca(processed_df)
 
         return final_df
     
