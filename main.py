@@ -53,7 +53,7 @@ def isolation_forest(df):
     outliers_fraction = float(.06)
     data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3']]
 
-    model =  IsolationForest(contamination=outliers_fraction)
+    model =  IsolationForest(contamination=outliers_fraction, max_samples=0.8)
     df['anomaly'] = model.fit_predict(data)
     df['label'] = np.where(df['anomaly']==-1, 1, 0)
 
@@ -96,11 +96,11 @@ class TimeSeriesAnomalyDetector:
     def __call__(self, df):
         processed_df = preprocess(df, drop_label)
 
-        # final_df = isolation_forest(processed_df)
+        final_df = isolation_forest(processed_df)
         # final_df = auto_encoder(processed_df)
         # final_df = pca(processed_df)
         # final_df = persist(processed_df)
-        final_df = knn(processed_df)
+        # final_df = knn(processed_df)
 
         return final_df
     
@@ -136,6 +136,7 @@ if __name__ == '__main__':
 # IsolationForest(contamination=0.07) -> Final Score: 0.43346 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3', 'lag_4']
 # IsolationForest(contamination=0.07) -> Final Score: 0.41407 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'trend']
 # IsolationForest(contamination=0.06) -> Final Score: 0.44024 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3'] ### Best ###
+# IsolationForest() -> Final Score: 0.29377 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3']
 
 # PcaAd(k=2, c=3.0) -> Final Score: 0.20631 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3']
 
