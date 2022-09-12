@@ -45,21 +45,26 @@ def process_data(df):
     return df
 
 
-xgb_clf = XGBOD(n_jobs=8, silent=False)
-for filename in os.listdir(input_path):
-    input_df = pd.read_csv(os.path.join(input_path, filename))
-    df = process_data(input_df)
-    data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
-    xgb_clf.fit(data.drop('label', axis=1), data['label'])
+# xgb_clf = XGBOD(n_jobs=8, silent=False)
+# for filename in os.listdir(input_path):
+#     input_df = pd.read_csv(os.path.join(input_path, filename))
+#     df = process_data(input_df)
+#     data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
+#     xgb_clf.fit(data.drop('label', axis=1), data['label'])
+# joblib.dump(xgb_clf, 'xgb_detector.sav')
 
-joblib.dump(xgb_clf, 'xgb_detector.sav')
+xgb_clf = joblib.load('xgb_detector.sav')
+input_df = pd.read_csv('data/30.csv')
 
-# xgb_prediction_df = data.copy()
+df = process_data(input_df)
+data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
+
+xgb_prediction_df = data.copy()
 # xgb_prediction_df['score'] = xgb_clf.decision_scores_ # outlier score
-# xgb_prediction_df['prediction'] = xgb_clf.predict(data.drop('label', axis=1))
+xgb_prediction_df['prediction'] = xgb_clf.predict(data.drop('label', axis=1))
 # xgb_prediction_df['prediction'].value_counts()
 # df['label'].value_counts()
 
 # plot_outlier(xgb_prediction_df)
 
-# print_metrics(df, xgb_prediction_df)
+print_metrics(df, xgb_prediction_df)
