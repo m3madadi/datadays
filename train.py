@@ -1,8 +1,9 @@
 import os
 import pandas as pd
-from pyod.models.xgbod import XGBOD
+# from pyod.models.xgbod import XGBOD
 from statsmodels.tsa.seasonal import STL
 import matplotlib.pyplot as plt
+from sklearn.ensemble import IsolationForest
 from sklearn.metrics import f1_score, recall_score, precision_score
 import joblib
 
@@ -46,25 +47,26 @@ def process_data(df):
 
 
 # xgb_clf = XGBOD(n_jobs=8, silent=False)
-# for filename in os.listdir(input_path):
-#     input_df = pd.read_csv(os.path.join(input_path, filename))
-#     df = process_data(input_df)
-#     data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
-#     xgb_clf.fit(data.drop('label', axis=1), data['label'])
-# joblib.dump(xgb_clf, 'xgb_detector.sav')
+if_clf = IsolationForest(max_samples=0.9, warm_start=True)
+for filename in os.listdir(input_path):
+    input_df = pd.read_csv(os.path.join(input_path, filename))
+    df = process_data(input_df)
+    data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
+    if_clf.fit(data.drop('label', axis=1), data['label'])
+joblib.dump(if_clf, 'xgb_detector.sav')
 
-xgb_clf = joblib.load('xgb_detector.sav')
+loaded_clf = joblib.load('if_detector.sav')
 input_df = pd.read_csv('data/30.csv')
 
 df = process_data(input_df)
 data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
 
-xgb_prediction_df = data.copy()
-# xgb_prediction_df['score'] = xgb_clf.decision_scores_ # outlier score
-xgb_prediction_df['prediction'] = xgb_clf.predict(data.drop('label', axis=1))
-# xgb_prediction_df['prediction'].value_counts()
+prediction_df = data.copy()
+# prediction_df['score'] = xgb_clf.decision_scores_ # outlier score
+prediction_df['prediction'] = loaded_clf.predict(data.drop('label', axis=1))
+# prediction_df['prediction'].value_counts()
 # df['label'].value_counts()
 
-# plot_outlier(xgb_prediction_df)
+# plot_outlier(prediction_df)
 
-print_metrics(df, xgb_prediction_df)
+print_metrics(df, prediction_df)
