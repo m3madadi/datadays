@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import f1_score, precision_score, recall_score
+from pyod.models.knn import KNN
 from adtk.detector import PcaAD, PersistAD
 from adtk.visualization import plot
 from statsmodels.tsa.seasonal import STL
@@ -59,6 +60,17 @@ def isolation_forest(df):
     return df[['value', 'label']]
 
 
+def knn(df):
+    outliers_fraction = float(.06)
+    data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3']]
+
+    model =  KNN(contamination=outliers_fraction, n_neighbors=2, method='median', algorithm='kd_tree')
+    df['anomaly'] = model.fit_predict(data)
+    df['label'] = np.where(df['anomaly']==1, 1, 0)
+
+    return df[['value', 'label']]
+
+
 def pca(df):
     data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3']]
 
@@ -87,7 +99,8 @@ class TimeSeriesAnomalyDetector:
         # final_df = isolation_forest(processed_df)
         # final_df = auto_encoder(processed_df)
         # final_df = pca(processed_df)
-        final_df = persist(processed_df)
+        # final_df = persist(processed_df)
+        final_df = knn(processed_df)
 
         return final_df
     
@@ -127,3 +140,5 @@ if __name__ == '__main__':
 # PcaAd(k=2, c=3.0) -> Final Score: 0.20631 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3']
 
 # PersistAD(c=3.0, side='both', window=20) -> Final Score: 0.22138 - Features: ['value']
+
+# KNN(contamination=0.06) -> Final Score: 0.26736 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3']
