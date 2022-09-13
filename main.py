@@ -5,9 +5,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from sklearn.decomposition import PCA
 from sklearn.metrics import f1_score, precision_score, recall_score
-# from pyod.models.knn import KNN
-# from adtk.detector import PcaAD, PersistAD
-# from adtk.visualization import plot
+from pyod.models.knn import KNN
+from pyod.models.copod import COPOD
+from adtk.detector import PcaAD, PersistAD
+from adtk.visualization import plot
 from statsmodels.tsa.seasonal import STL
 import statsmodels.api as sm
 
@@ -44,6 +45,9 @@ def preprocess(df, drop_label):
     df['lag_2'] = df['value'].shift(2)
     df['lag_3'] = df['value'].shift(3)
     df['lag_4'] = df['value'].shift(4)
+    df['lag+1'] = df['value'].shift(-1)
+    df['lag+2'] = df['value'].shift(-2)
+    df['lag+3'] = df['value'].shift(-3)
     df.fillna(0, inplace=True)
     return df
 
@@ -54,22 +58,36 @@ def isolation_forest(df):
     outliers_fraction = float(.06)
     data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal']]
 
-    # new_data = PCA(n_components=3).fit_transform(data)
+    new_data = PCA().fit_transform(data)
     # arima = sm.tsa.arima.ARIMA(data['value'], order=(9, 1, 4)).fit()
     # data['arima_resid'] = arima.resid
 
     model =  IsolationForest(contamination=outliers_fraction, n_estimators=50)
-    df['anomaly'] = model.fit_predict(data)
+    df['anomaly'] = model.fit_predict(new_data)
     df['label'] = np.where(df['anomaly']==-1, 1, 0)
+
+    return df[['value', 'label']]
+
+def copod(df):
+    outliers_fraction = float(.06)
+    data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal']]
+
+    # new_data = PCA(n_components=3).fit_transform(data)
+    # arima = sm.tsa.arima.ARIMA(data['value'], order=(9, 1, 4)).fit()
+    # data['arima_resid'] = arima.resid
+
+    model =  COPOD(contamination=outliers_fraction)
+    df['anomaly'] = model.fit_predict(data)
+    df['label'] = np.where(df['anomaly']==1, 1, 0)
 
     return df[['value', 'label']]
 
 
 def knn(df):
     outliers_fraction = float(.06)
-    data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3']]
+    data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal']]
 
-    model =  KNN(contamination=outliers_fraction, n_neighbors=2, method='median', algorithm='kd_tree')
+    model =  KNN(contamination=outliers_fraction)
     df['anomaly'] = model.fit_predict(data)
     df['label'] = np.where(df['anomaly']==1, 1, 0)
 
@@ -77,9 +95,9 @@ def knn(df):
 
 
 def pca(df):
-    data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3']]
+    data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal']]
 
-    pca_ad = PcaAD(k=2, c=3.0)
+    pca_ad = PcaAD(k=2, c=2.5)
     anomalies = pca_ad.fit_detect(data)
     df['label'] = np.where(anomalies==True, 1, 0)
 
@@ -102,6 +120,7 @@ class TimeSeriesAnomalyDetector:
         processed_df = preprocess(df, drop_label)
 
         final_df = isolation_forest(processed_df)
+        # final_df = copod(processed_df)
         # final_df = auto_encoder(processed_df)
         # final_df = pca(processed_df)
         # final_df = persist(processed_df)
@@ -156,6 +175,7 @@ if __name__ == '__main__':
 # IsolationForest(contamination=0.06, n_estimators=200, max_samples=1500) -> Final Score: 0.40370 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3', 'lag_4', 'seasonal'] - STL period=4
 # IsolationForest(contamination=0.065, n_estimators=100, max_samples=50) -> Final Score: 0.42349 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3', 'lag_4', 'seasonal'] - STL period=4
 # IsolationForest(contamination=0.06, n_estimators=50, max_samples=50) -> Final Score: 0.41291 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3', 'lag_4', 'seasonal'] - STL period=4
+# IsolationForest(contamination=0.06, n_estimators=50) -> Final Score: 0.45638 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal', 'lag+1', 'lag+2', 'lag+3'] - STL period=4
 
 # IsolationForest(contamination=0.06, n_estimators=50) -> Final Score: 0.41467 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4', 'seasonal', 'pca'] - STL period=4
 # IsolationForest(contamination=0.06, n_estimators=50) -> Final Score: 0.38620 - Features: ['value', 'pca' - 'value'] - STL period=4
@@ -167,3 +187,5 @@ if __name__ == '__main__':
 # PersistAD(c=3.0, side='both', window=20) -> Final Score: 0.22138 - Features: ['value']
 
 # KNN(contamination=0.06) -> Final Score: 0.26736 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3']
+
+# COPOD(contamination=0.06) -> Final Score: 0.26780 - Features: ['value', 'resid', 'lag_1', 'lag_2', 'lag_3', 'seasonal']
