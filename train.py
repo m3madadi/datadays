@@ -1,15 +1,16 @@
 import os
 import pandas as pd
 import numpy as np
-# from pyod.models.xgbod import XGBOD
+from pyod.models.xgbod import XGBOD
 from statsmodels.tsa.seasonal import STL
 import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import f1_score, recall_score, precision_score
 import joblib
+from sklearn.ensemble import IsolationForest
 
 
-input_path = '/home/madadi/Project/datadays/data/'
+input_path = 'data/'
 
 
 def plot_outlier(predicted_df):
@@ -46,30 +47,48 @@ def process_data(df):
 
     return df
 
+def train_isolation_forest():
+    if_clf = IsolationForest(warm_start=True)
+    for filename in os.listdir(input_path):
+        input_df = pd.read_csv(os.path.join(input_path, filename))
+        df = process_data(input_df)
+        data = df[['value', 'lag_1', 'lag_2', 'resid']]
+        if_clf.fit(data)
+        if_clf.n_estimators += 10
+    joblib.dump(if_clf, 'if_detector.sav')
 
-# xgb_clf = XGBOD(n_jobs=8, silent=False)
-if_clf = IsolationForest(max_samples=0.9, warm_start=True)
-for filename in os.listdir(input_path):
-    input_df = pd.read_csv(os.path.join(input_path, filename))
-    df = process_data(input_df)
-    data = df[['value', 'lag_1', 'lag_2', 'resid']]
-    if_clf.fit(data)
-    if_clf.n_estimators += 10
-joblib.dump(if_clf, 'if_detector.sav')
+def train_xgbod():
+    xgb_clf = XGBOD(n_jobs=8, n_estimators=50)
+    for filename in os.listdir(input_path):
+        input_df = pd.read_csv(os.path.join(input_path, filename))
+        df = process_data(input_df)
+        # input_df = pd.read_csv('data/13.csv')
+        if len(input_df) > 2000:
+            splited = np.array_split(df, len(df)/1500)
+            for item in splited:
+                data = item[['value', 'lag_1', 'lag_2', 'lag_3', 'lag_4', 'resid', 'seasonal']]
+                label = item['label']
+                xgb_clf.fit(data, label)
+        else:
+            data = df[['value', 'lag_1', 'lag_2', 'lag_3', 'lag_4', 'resid', 'seasonal']]
+            label = df['label']
+            xgb_clf.fit(data, label)
+    joblib.dump(xgb_clf, 'xgb_detector.sav')
 
-loaded_clf = joblib.load('if_detector.sav')
-input_df = pd.read_csv('data/0.csv')
+
+train_xgbod()
+loaded_clf = joblib.load('xgb_detector.sav')
+input_df = pd.read_csv('data/13.csv')
 
 df = process_data(input_df)
-data = df[['value', 'lag_1', 'lag_2', 'resid']]
+data = df[['value', 'lag_1', 'lag_2', 'lag_3', 'lag_4', 'resid', 'seasonal']]
 
 prediction_df = data.copy()
-# prediction_df['score'] = xgb_clf.decision_scores_ # outlier score
+# prediction_df['score'] = loaded_clf.decision_scores_ # outlier score
 prediction_df['anomaly'] = loaded_clf.predict(data)
-prediction_df['prediction'] = np.where(prediction_df['anomaly']==-1, 1, 0)
+prediction_df['prediction'] = np.where(prediction_df['anomaly']==1, 1, 0)
 # prediction_df['prediction'].value_counts()
-# df['label'].value_counts()
 
-# plot_outlier(prediction_df)
+plot_outlier(prediction_df)
 
 print_metrics(df, prediction_df)

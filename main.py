@@ -7,8 +7,9 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import f1_score, precision_score, recall_score
 from pyod.models.knn import KNN
 from pyod.models.copod import COPOD
-from adtk.detector import PcaAD, PersistAD
-from adtk.visualization import plot
+from pyod.models.ecod import ECOD
+# from adtk.detector import PcaAD, PersistAD
+# from adtk.visualization import plot
 from statsmodels.tsa.seasonal import STL
 import statsmodels.api as sm
 
@@ -58,7 +59,7 @@ def isolation_forest(df):
     outliers_fraction = float(.06)
     data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal']]
 
-    new_data = PCA().fit_transform(data)
+    # new_data = PCA().fit_transform(data)
     # arima = sm.tsa.arima.ARIMA(data['value'], order=(9, 1, 4)).fit()
     # data['arima_resid'] = arima.resid
 
@@ -68,7 +69,7 @@ def isolation_forest(df):
 
     return df[['value', 'label']]
 
-def copod(df):
+def ecod(df):
     outliers_fraction = float(.06)
     data = df[['value', 'resid', 'lag_1', 'lag_2', 'lag_3','lag_4','seasonal']]
 
@@ -76,7 +77,7 @@ def copod(df):
     # arima = sm.tsa.arima.ARIMA(data['value'], order=(9, 1, 4)).fit()
     # data['arima_resid'] = arima.resid
 
-    model =  COPOD(contamination=outliers_fraction)
+    model =  ECOD(contamination=outliers_fraction)
     df['anomaly'] = model.fit_predict(data)
     df['label'] = np.where(df['anomaly']==1, 1, 0)
 
@@ -119,7 +120,8 @@ class TimeSeriesAnomalyDetector:
     def __call__(self, df):
         processed_df = preprocess(df, drop_label)
 
-        final_df = isolation_forest(processed_df)
+        # final_df = isolation_forest(processed_df)
+        final_df = ecod(processed_df)
         # final_df = copod(processed_df)
         # final_df = auto_encoder(processed_df)
         # final_df = pca(processed_df)
