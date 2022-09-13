@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 # from pyod.models.xgbod import XGBOD
 from statsmodels.tsa.seasonal import STL
 import matplotlib.pyplot as plt
@@ -51,19 +52,21 @@ if_clf = IsolationForest(max_samples=0.9, warm_start=True)
 for filename in os.listdir(input_path):
     input_df = pd.read_csv(os.path.join(input_path, filename))
     df = process_data(input_df)
-    data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
-    if_clf.fit(data.drop('label', axis=1), data['label'])
-joblib.dump(if_clf, 'xgb_detector.sav')
+    data = df[['value', 'lag_1', 'lag_2', 'resid']]
+    if_clf.fit(data)
+    if_clf.n_estimators += 10
+joblib.dump(if_clf, 'if_detector.sav')
 
 loaded_clf = joblib.load('if_detector.sav')
-input_df = pd.read_csv('data/30.csv')
+input_df = pd.read_csv('data/0.csv')
 
 df = process_data(input_df)
-data = df[['value', 'lag_1', 'lag_2', 'resid', 'label']]
+data = df[['value', 'lag_1', 'lag_2', 'resid']]
 
 prediction_df = data.copy()
 # prediction_df['score'] = xgb_clf.decision_scores_ # outlier score
-prediction_df['prediction'] = loaded_clf.predict(data.drop('label', axis=1))
+prediction_df['anomaly'] = loaded_clf.predict(data)
+prediction_df['prediction'] = np.where(prediction_df['anomaly']==-1, 1, 0)
 # prediction_df['prediction'].value_counts()
 # df['label'].value_counts()
 
